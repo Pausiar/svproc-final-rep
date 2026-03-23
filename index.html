@@ -1,0 +1,1968 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Concurrencia en Java</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/java.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3350;
+      --accent: #6c63ff;
+      --accent2: #00d4aa;
+      --accent3: #ff6b6b;
+      --text: #e0e4f0;
+      --text-muted: #8b92b0;
+      --lock-color: #f59e0b;
+      --atomic-color: #10b981;
+      --collection-color: #3b82f6;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      line-height: 1.7;
+    }
+
+    /* ── TOP HEADER ── */
+    header {
+      background: linear-gradient(135deg, #1a1d27 0%, #161928 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 2rem 2rem 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    header h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #6c63ff, #00d4aa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 1rem;
+    }
+    .tabs {
+      display: flex;
+      gap: 0;
+      overflow-x: auto;
+    }
+    .tab-btn {
+      padding: 0.75rem 1.5rem;
+      background: transparent;
+      border: none;
+      border-bottom: 3px solid transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 600;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active-lock   { border-bottom-color: var(--lock-color);       color: var(--lock-color); }
+    .tab-btn.active-atomic { border-bottom-color: var(--atomic-color);     color: var(--atomic-color); }
+    .tab-btn.active-col    { border-bottom-color: var(--collection-color); color: var(--collection-color); }
+
+    /* ── MAIN LAYOUT ── */
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── SECTION HEADINGS ── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin: 2.5rem 0 1rem;
+    }
+    .section-header h2 {
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+    .badge {
+      padding: 0.2rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .badge-teoria  { background: #2e3350; color: #aab0d0; }
+    .badge-ejerc   { background: #1e2d3d; color: #7ec8e3; }
+
+    h3 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 1.5rem 0 0.5rem;
+    }
+
+    p, li { color: var(--text-muted); margin-bottom: 0.5rem; }
+    li { margin-left: 1.5rem; }
+    strong { color: var(--text); }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    /* ── EXERCISE CARDS ── */
+    .exercise-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .exercise-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1rem 1.5rem;
+      cursor: pointer;
+      user-select: none;
+    }
+    .exercise-header:hover { background: var(--surface2); }
+    .exercise-number {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+    .ex-lock       .exercise-number { background: rgba(245,158,11,0.2); color: var(--lock-color); }
+    .ex-atomic     .exercise-number { background: rgba(16,185,129,0.2); color: var(--atomic-color); }
+    .ex-collection .exercise-number { background: rgba(59,130,246,0.2); color: var(--collection-color); }
+    .exercise-title { font-weight: 600; font-size: 1rem; }
+    .chevron {
+      margin-left: auto;
+      transition: transform 0.3s;
+      color: var(--text-muted);
+    }
+    .exercise-card.open .chevron { transform: rotate(180deg); }
+    .exercise-body {
+      display: none;
+      padding: 0 1.5rem 1.5rem;
+      border-top: 1px solid var(--border);
+    }
+    .exercise-card.open .exercise-body { display: block; }
+
+    /* ── CODE BLOCKS ── */
+    pre {
+      border-radius: 10px;
+      margin: 1rem 0;
+      overflow-x: auto;
+    }
+    pre code { font-size: 0.82rem; line-height: 1.6; }
+    .code-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 0.25rem;
+    }
+
+    /* ── SOLUTION TOGGLE ── */
+    .solution-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.4rem 0.9rem;
+      font-size: 0.82rem;
+      cursor: pointer;
+      color: var(--text-muted);
+      margin-top: 1rem;
+      transition: all 0.2s;
+    }
+    .solution-toggle:hover { border-color: var(--accent); color: var(--text); }
+    .solution-body { display: none; margin-top: 0.75rem; }
+    .solution-body.visible { display: block; }
+
+    /* ── CALLOUTS ── */
+    .callout {
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      margin: 1rem 0;
+      border-left: 4px solid;
+    }
+    .callout-info    { background: rgba(59,130,246,0.1);  border-color: #3b82f6; }
+    .callout-warning { background: rgba(245,158,11,0.1);  border-color: #f59e0b; }
+    .callout-success { background: rgba(16,185,129,0.1);  border-color: #10b981; }
+    .callout-danger  { background: rgba(255,107,107,0.1); border-color: #ff6b6b; }
+    .callout p { color: var(--text); margin: 0; font-size: 0.9rem; }
+    .callout strong { color: inherit; }
+
+    /* ── METHOD TABLE ── */
+    .method-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.88rem;
+    }
+    .method-table th {
+      background: var(--surface2);
+      padding: 0.6rem 1rem;
+      text-align: left;
+      font-weight: 600;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+    .method-table td {
+      padding: 0.55rem 1rem;
+      border: 1px solid var(--border);
+      vertical-align: top;
+      color: var(--text-muted);
+    }
+    .method-table tr:hover td { background: var(--surface2); }
+    code { background: var(--surface2); padding: 0.1em 0.4em; border-radius: 4px; font-size: 0.85em; color: #c9a6f5; }
+
+    /* ── DIVIDER ── */
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+
+    /* ── STEPS LIST ── */
+    .steps { list-style: none; padding: 0; }
+    .steps li {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 0.6rem;
+      align-items: flex-start;
+    }
+    .step-num {
+      background: var(--accent);
+      color: white;
+      border-radius: 50%;
+      width: 1.5rem;
+      height: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 0.15rem;
+    }
+
+    /* ── TOPIC INTRO ── */
+    .topic-intro {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+    .topic-intro h2 { font-size: 1.6rem; margin-bottom: 0.5rem; }
+
+    .tag {
+      display: inline-block;
+      padding: 0.15rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-right: 0.3rem;
+      margin-bottom: 0.3rem;
+    }
+    .tag-lock       { background: rgba(245,158,11,0.15); color: var(--lock-color); }
+    .tag-atomic     { background: rgba(16,185,129,0.15); color: var(--atomic-color); }
+    .tag-collection { background: rgba(59,130,246,0.15); color: var(--collection-color); }
+
+    /* responsive */
+    @media (max-width: 600px) {
+      header { padding: 1rem 1rem 0; }
+      main { padding: 1.25rem 1rem 3rem; }
+      .tab-btn { padding: 0.6rem 0.9rem; font-size: 0.85rem; }
+      .method-table { font-size: 0.78rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>☕ Concurrencia en Java</h1>
+  <div class="tabs">
+    <button class="tab-btn" data-tab="lock"       onclick="switchTab('lock')"      >🔒 Lock</button>
+    <button class="tab-btn" data-tab="atomic"     onclick="switchTab('atomic')"    >⚛️ Variables Atómicas</button>
+    <button class="tab-btn" data-tab="collection" onclick="switchTab('collection')">🏮 Colecciones Concurrentes</button>
+  </div>
+</header>
+
+<main>
+
+<!-- ═══════════════════════════════════════════════
+     TAB 1 — LOCK
+═══════════════════════════════════════════════ -->
+<section id="tab-lock" class="tab-panel">
+
+  <div class="topic-intro">
+    <h2>🔒 Lock</h2>
+    <p>Los objetos <code>Lock</code> ofrecen el mismo propósito que <code>synchronized</code> —exclusión mutua— pero con mayor control y flexibilidad.</p>
+    <div style="margin-top:0.75rem">
+      <span class="tag tag-lock">ReentrantLock</span>
+      <span class="tag tag-lock">tryLock()</span>
+      <span class="tag tag-lock">fairness</span>
+      <span class="tag tag-lock">deadlock prevention</span>
+    </div>
+  </div>
+
+  <!-- TEORIA -->
+  <div class="section-header">
+    <h2>Teoría</h2>
+    <span class="badge badge-teoria">Teoría</span>
+  </div>
+
+  <div class="card">
+    <h3>¿Por qué usar Lock en lugar de synchronized?</h3>
+    <p>Los bloques <code>synchronized</code> son sencillos pero limitados. Los objetos <code>Lock</code> añaden dos capacidades clave:</p>
+    <ul>
+      <li><strong>Intentar adquirir sin bloquearse:</strong> <code>tryLock()</code> devuelve <code>true/false</code> inmediatamente.</li>
+      <li><strong>Política de equidad (fairness):</strong> garantiza que ningún thread espere indefinidamente.</li>
+    </ul>
+    <div class="callout callout-info">
+      <p><strong>Regla de oro:</strong> Siempre liberar el lock en un bloque <code>finally</code> para que se libere aunque haya excepciones.</p>
+    </div>
+  </div>
+
+  <div class="card-grid">
+    <div class="card" style="margin:0">
+      <h3>Crear un Lock</h3>
+      <div class="code-label">Sin política de equidad</div>
+      <pre><code class="language-java">Lock lock = new ReentrantLock();</code></pre>
+      <div class="code-label">Con política de equidad (fair)</div>
+      <pre><code class="language-java">// El thread que más tiempo lleva esperando
+// tiene prioridad para adquirirlo
+Lock lock = new ReentrantLock(true);</code></pre>
+    </div>
+    <div class="card" style="margin:0">
+      <h3>Obtener y liberar</h3>
+      <div class="code-label">Patrón obligatorio con finally</div>
+      <pre><code class="language-java">lock.lock();           // bloquea hasta obtenerlo
+try {
+    // código protegido
+} finally {
+    lock.unlock();     // siempre se libera
+}</code></pre>
+      <p><small>Solo el thread que adquirió el lock puede liberarlo. Si otro intenta liberarlo se lanza <code>IllegalMonitorStateException</code>.</small></p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>tryLock() — intentar sin bloquearse</h3>
+    <p><code>tryLock()</code> intenta obtener el lock y devuelve <code>true</code> si lo consigue o <code>false</code> si no. El thread no se bloquea en ningún caso.</p>
+    <div class="code-label">Patrón básico con un lock</div>
+    <pre><code class="language-java">boolean lockAdquirido = false;
+try {
+    lockAdquirido = lock.tryLock();
+    if (lockAdquirido) {
+        // código protegido
+    } else {
+        // alternativa si no se pudo obtener
+    }
+} finally {
+    if (lockAdquirido) lock.unlock();
+}</code></pre>
+  </div>
+
+  <div class="card">
+    <h3>Patrón con dos Locks — prevención de deadlock</h3>
+    <p>Cuando necesitamos <em>ambos</em> locks a la vez, el patrón con <code>tryLock()</code> evita el deadlock clásico donde cada thread tiene un lock y espera el del otro.</p>
+    <div class="code-label">Intentar adquirir los dos; si no, reintentar</div>
+    <pre><code class="language-java">while (true) {
+    boolean lock1Adquirido = false;
+    boolean lock2Adquirido = false;
+    try {
+        lock1Adquirido = lock1.tryLock();
+        lock2Adquirido = lock2.tryLock();
+
+        if (lock1Adquirido && lock2Adquirido) {
+            // ambos adquiridos: hacer el trabajo
+            break;
+        }
+        // si no los tenemos ambos, el finally los libera
+        // y volvemos a intentarlo
+    } finally {
+        if (lock1Adquirido) lock1.unlock();
+        if (lock2Adquirido) lock2.unlock();
+    }
+}</code></pre>
+    <div class="callout callout-warning">
+      <p><strong>¿Por qué esto evita el deadlock?</strong> Si el thread A tiene lock1 y no consigue lock2, lo libera todo antes de reintentar. Así el thread B puede avanzar mientras A espera.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Resumen de métodos de ReentrantLock</h3>
+    <table class="method-table">
+      <thead><tr><th>Método</th><th>Descripción</th></tr></thead>
+      <tbody>
+        <tr><td><code>lock()</code></td><td>Bloquea el thread hasta que el lock esté disponible.</td></tr>
+        <tr><td><code>unlock()</code></td><td>Libera el lock. Solo el thread propietario puede llamarlo.</td></tr>
+        <tr><td><code>tryLock()</code></td><td>Intenta adquirir. Devuelve <code>true/false</code> sin bloquear.</td></tr>
+        <tr><td><code>tryLock(tiempo, unidad)</code></td><td>Intenta durante un tiempo máximo antes de devolver <code>false</code>.</td></tr>
+        <tr><td><code>isHeldByCurrentThread()</code></td><td>Comprueba si el thread actual posee el lock.</td></tr>
+        <tr><td><code>getQueueLength()</code></td><td>Número de threads esperando para adquirirlo.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- EJERCICIOS -->
+  <hr />
+  <div class="section-header">
+    <h2>Ejercicios</h2>
+    <span class="badge badge-ejerc">Ejercicios</span>
+  </div>
+
+  <!-- EX 1 -->
+  <div class="exercise-card ex-lock" id="lock-ex1">
+    <div class="exercise-header" onclick="toggleExercise('lock-ex1')">
+      <div class="exercise-number">1</div>
+      <span class="exercise-title">📚 Copybook</span>
+      <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div class="exercise-body">
+      <p>Un gestor de libros permite copiar las páginas interiores no vacías de un libro al final de otro. El problema es que dos threads intentan copiar simultáneamente (A→B y B→A), produciendo resultados inconsistentes.</p>
+      <div class="callout callout-warning">
+        <p><strong>Objetivo:</strong> garantizar que, aunque se lancen ambas copias a la vez, cada operación se complete de forma íntegra antes de empezar la otra.</p>
+      </div>
+
+      <h3>Código de partida</h3>
+      <pre><code class="language-java">import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Executors;
+
+public class Main {
+
+    static class Libro {
+        ArrayList&lt;String&gt; paginas;
+
+        Libro(List&lt;String&gt; paginas) {
+            this.paginas = new ArrayList&lt;&gt;(paginas);
+        }
+
+        void copiarPaginas(Libro libroOrigen) {
+            for (String pagina : libroOrigen.obtenerPaginasInterioresNoVacias()) {
+                int penultimaPosicion = Math.max(0, this.paginas.size() - 1);
+                this.paginas.add(penultimaPosicion, pagina);
+            }
+        }
+
+        List&lt;String&gt; obtenerPaginasInterioresNoVacias() {
+            List&lt;String&gt; paginas = new ArrayList&lt;&gt;();
+            for (String pagina : this.paginas.subList(1, this.paginas.size() - 1)) {
+                if (!pagina.isEmpty()) paginas.add(pagina);
+            }
+            return paginas;
+        }
+    }
+
+    public static void main(String[] args) {
+        for (int i = 0; i &lt; 100; i++) {
+            final Libro libroA = new Libro(List.of("Portada-A","A1","A2","","A3","A4","Contraportada-A"));
+            final Libro libroB = new Libro(List.of("Portada-B","B1","B2","B3","","B4","Contraportada-B"));
+
+            try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+                executor.submit(() -&gt; libroA.copiarPaginas(libroB));
+                executor.submit(() -&gt; libroB.copiarPaginas(libroA));
+            }
+
+            System.out.println("Libro A: " + libroA.paginas);
+            System.out.println("Libro B: " + libroB.paginas);
+            System.out.println();
+        }
+    }
+}</code></pre>
+
+      <h3>Pista de diseño</h3>
+      <ul class="steps">
+        <li><div class="step-num">1</div><span>Añade un campo <code>Lock lock = new ReentrantLock();</code> a la clase <code>Libro</code>.</span></li>
+        <li><div class="step-num">2</div><span>En <code>copiarPaginas</code> necesitas adquirir <strong>ambos</strong> locks: el del libro destino (<code>this</code>) y el del libro origen.</span></li>
+        <li><div class="step-num">3</div><span>Usa el patrón <code>while(true) { tryLock + tryLock; if(ambos) { …; break; } }</code> para evitar deadlock.</span></li>
+      </ul>
+
+      <button class="solution-toggle" onclick="toggleSolution('sol-lock1')">▼ Ver solución</button>
+      <div id="sol-lock1" class="solution-body">
+        <pre><code class="language-java">import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
+public class Main {
+
+    static class Libro {
+        ArrayList&lt;String&gt; paginas;
+        final Lock lock = new ReentrantLock();
+
+        Libro(List&lt;String&gt; paginas) {
+            this.paginas = new ArrayList&lt;&gt;(paginas);
+        }
+
+        void copiarPaginas(Libro libroOrigen) {
+            // Adquirir ambos locks sin riesgo de deadlock
+            while (true) {
+                boolean lockDestinoAdq = false;
+                boolean lockOrigenAdq  = false;
+                try {
+                    lockDestinoAdq = this.lock.tryLock();
+                    lockOrigenAdq  = libroOrigen.lock.tryLock();
+
+                    if (lockDestinoAdq && lockOrigenAdq) {
+                        for (String pagina : libroOrigen.obtenerPaginasInterioresNoVacias()) {
+                            int pos = Math.max(0, this.paginas.size() - 1);
+                            this.paginas.add(pos, pagina);
+                        }
+                        break;
+                    }
+                } finally {
+                    if (lockDestinoAdq) this.lock.unlock();
+                    if (lockOrigenAdq)  libroOrigen.lock.unlock();
+                }
+            }
+        }
+
+        List&lt;String&gt; obtenerPaginasInterioresNoVacias() {
+            List&lt;String&gt; result = new ArrayList&lt;&gt;();
+            for (String p : this.paginas.subList(1, this.paginas.size() - 1)) {
+                if (!p.isEmpty()) result.add(p);
+            }
+            return result;
+        }
+    }
+
+    public static void main(String[] args) {
+        for (int i = 0; i &lt; 100; i++) {
+            final Libro libroA = new Libro(List.of("Portada-A","A1","A2","","A3","A4","Contraportada-A"));
+            final Libro libroB = new Libro(List.of("Portada-B","B1","B2","B3","","B4","Contraportada-B"));
+
+            try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+                executor.submit(() -&gt; libroA.copiarPaginas(libroB));
+                executor.submit(() -&gt; libroB.copiarPaginas(libroA));
+            }
+
+            System.out.println("Libro A: " + libroA.paginas);
+            System.out.println("Libro B: " + libroB.paginas);
+            System.out.println();
+        }
+    }
+}</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- EX 2 -->
+  <div class="exercise-card ex-lock" id="lock-ex2">
+    <div class="exercise-header" onclick="toggleExercise('lock-ex2')">
+      <div class="exercise-number">2</div>
+      <span class="exercise-title">🌺 Database2000</span>
+      <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div class="exercise-body">
+      <p>Una <code>Database</code> escribe 2000 veces una letra para formar una línea. Cuatro <code>Writer</code> lo hacen en bucle durante 1 segundo. Sin sincronización, las letras se mezclan entre sí.</p>
+      <div class="callout callout-warning">
+        <p><strong>Objetivo:</strong> cada línea escrita en <code>data</code> debe contener exactamente 2000 repeticiones de la misma letra, sin mezclas.</p>
+      </div>
+
+      <h3>Código de partida</h3>
+      <pre><code class="language-java">import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+public class Main {
+    static class Database {
+        String data = "";
+
+        void write(String value) {
+            for (int i = 0; i &lt; 2000; i++) {
+                this.data += value;
+            }
+            this.data += "\n";
+        }
+    }
+
+    static class Writer implements Runnable {
+        int numberOfWrites = 0;
+        final Database database;
+        final String letra;
+
+        Writer(Database database, String letra) {
+            this.database = database;
+            this.letra = letra;
+        }
+
+        @Override
+        public void run() {
+            while (true) {
+                database.write(letra);
+                numberOfWrites++;
+            }
+        }
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        var database = new Database();
+        var writer1 = new Writer(database, "a");
+        var writer2 = new Writer(database, "b");
+        var writer3 = new Writer(database, "c");
+        var writer4 = new Writer(database, "d");
+
+        var executor = Executors.newVirtualThreadPerTaskExecutor();
+        executor.submit(writer1);
+        executor.submit(writer2);
+        executor.submit(writer3);
+        executor.submit(writer4);
+
+        executor.awaitTermination(1, TimeUnit.SECONDS);
+
+        System.out.println(database.data);
+        System.out.println(writer1.numberOfWrites);
+        System.out.println(writer2.numberOfWrites);
+        System.out.println(writer3.numberOfWrites);
+        System.out.println(writer4.numberOfWrites);
+    }
+}</code></pre>
+
+      <h3>Pista de diseño</h3>
+      <ul class="steps">
+        <li><div class="step-num">1</div><span>Añade un <code>Lock lock = new ReentrantLock();</code> a <code>Database</code>.</span></li>
+        <li><div class="step-num">2</div><span>En <code>write()</code>, adquiere el lock antes del bucle y libéralo en <code>finally</code>.</span></li>
+        <li><div class="step-num">3</div><span>Necesitarás que el bucle <code>while(true)</code> de <code>Writer.run()</code> se pueda interrumpir; comprueba <code>Thread.currentThread().isInterrupted()</code>.</span></li>
+      </ul>
+
+      <button class="solution-toggle" onclick="toggleSolution('sol-lock2')">▼ Ver solución</button>
+      <div id="sol-lock2" class="solution-body">
+        <pre><code class="language-java">import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
+public class Main {
+    static class Database {
+        String data = "";
+        final Lock lock = new ReentrantLock();
+
+        void write(String value) {
+            lock.lock();
+            try {
+                for (int i = 0; i &lt; 2000; i++) {
+                    this.data += value;
+                }
+                this.data += "\n";
+            } finally {
+                lock.unlock();
+            }
+        }
+    }
+
+    static class Writer implements Runnable {
+        int numberOfWrites = 0;
+        final Database database;
+        final String letra;
+
+        Writer(Database database, String letra) {
+            this.database = database;
+            this.letra = letra;
+        }
+
+        @Override
+        public void run() {
+            while (!Thread.currentThread().isInterrupted()) {
+                database.write(letra);
+                numberOfWrites++;
+            }
+        }
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        var database = new Database();
+        var writer1 = new Writer(database, "a");
+        var writer2 = new Writer(database, "b");
+        var writer3 = new Writer(database, "c");
+        var writer4 = new Writer(database, "d");
+
+        var executor = Executors.newVirtualThreadPerTaskExecutor();
+        executor.submit(writer1);
+        executor.submit(writer2);
+        executor.submit(writer3);
+        executor.submit(writer4);
+
+        executor.awaitTermination(1, TimeUnit.SECONDS);
+        executor.shutdownNow();
+
+        System.out.println(database.data.lines()
+            .filter(l -&gt; !l.isEmpty())
+            .filter(l -&gt; l.chars().distinct().count() &gt; 1)
+            .count() + " líneas mezcladas");   // debería ser 0
+
+        System.out.println("Escrituras a: " + writer1.numberOfWrites);
+        System.out.println("Escrituras b: " + writer2.numberOfWrites);
+        System.out.println("Escrituras c: " + writer3.numberOfWrites);
+        System.out.println("Escrituras d: " + writer4.numberOfWrites);
+    }
+}</code></pre>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+
+<!-- ═══════════════════════════════════════════════
+     TAB 2 — ATOMIC VARIABLES
+═══════════════════════════════════════════════ -->
+<section id="tab-atomic" class="tab-panel">
+
+  <div class="topic-intro">
+    <h2>⚛️ Variables Atómicas</h2>
+    <p>El paquete <code>java.util.concurrent.atomic</code> proporciona clases que realizan operaciones indivisibles sobre valores sin necesidad de <code>synchronized</code> ni locks.</p>
+    <div style="margin-top:0.75rem">
+      <span class="tag tag-atomic">AtomicInteger</span>
+      <span class="tag tag-atomic">AtomicLong</span>
+      <span class="tag tag-atomic">AtomicReference</span>
+      <span class="tag tag-atomic">compareAndSet</span>
+      <span class="tag tag-atomic">getAndUpdate</span>
+    </div>
+  </div>
+
+  <!-- TEORIA -->
+  <div class="section-header">
+    <h2>Teoría</h2>
+    <span class="badge badge-teoria">Teoría</span>
+  </div>
+
+  <div class="card">
+    <h3>¿Qué significa "atómico"?</h3>
+    <p>Una operación atómica se ejecuta de forma <strong>indivisible</strong>: nunca se puede observar en un estado intermedio por otro thread. Una operación como <code>i++</code> no es atómica; en realidad son tres pasos (leer, sumar, escribir) que pueden ser interrumpidos.</p>
+    <div class="callout callout-success">
+      <p><strong>Ventaja:</strong> Las operaciones atómicas son generalmente más rápidas que <code>synchronized</code> porque usan instrucciones CAS (<em>Compare-And-Swap</em>) del procesador en lugar de bloquear el thread.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>AtomicInteger — métodos principales</h3>
+    <table class="method-table">
+      <thead><tr><th>Método</th><th>Descripción</th><th>Valor devuelto</th></tr></thead>
+      <tbody>
+        <tr><td><code>get()</code></td><td>Lee el valor actual</td><td>valor actual</td></tr>
+        <tr><td><code>set(n)</code></td><td>Establece el valor</td><td>void</td></tr>
+        <tr><td><code>incrementAndGet()</code></td><td>Suma 1 y devuelve el nuevo valor</td><td>valor <em>después</em></td></tr>
+        <tr><td><code>getAndIncrement()</code></td><td>Devuelve el valor actual y luego suma 1</td><td>valor <em>antes</em></td></tr>
+        <tr><td><code>decrementAndGet()</code></td><td>Resta 1 y devuelve el nuevo valor</td><td>valor <em>después</em></td></tr>
+        <tr><td><code>addAndGet(n)</code></td><td>Suma n y devuelve el nuevo valor</td><td>valor <em>después</em></td></tr>
+        <tr><td><code>getAndUpdate(fn)</code></td><td>Aplica función y devuelve el valor <em>anterior</em></td><td>valor <em>antes</em></td></tr>
+        <tr><td><code>updateAndGet(fn)</code></td><td>Aplica función y devuelve el valor <em>nuevo</em></td><td>valor <em>después</em></td></tr>
+        <tr><td><code>compareAndSet(exp, upd)</code></td><td>Si el valor == exp, lo pone a upd</td><td><code>true</code> si se actualizó</td></tr>
+      </tbody>
+    </table>
+    <pre><code class="language-java">AtomicInteger contador = new AtomicInteger(0);
+
+contador.incrementAndGet();   // → 1
+contador.getAndIncrement();   // → devuelve 1, queda en 2
+contador.addAndGet(10);       // → 12
+contador.updateAndGet(v -&gt; v * 2); // → 24
+contador.compareAndSet(24, 0);     // → true, queda en 0</code></pre>
+  </div>
+
+  <div class="card">
+    <h3>AtomicLong</h3>
+    <p>Igual que <code>AtomicInteger</code> pero con tipo <code>long</code>. Ideal para contadores de gran volumen (IDs, timestamps, etc.).</p>
+    <pre><code class="language-java">AtomicLong idCounter = new AtomicLong(0);
+long nuevoId = idCounter.incrementAndGet();  // genera IDs únicos de forma segura</code></pre>
+  </div>
+
+  <div class="card">
+    <h3>AtomicReference&lt;T&gt;</h3>
+    <p>Permite reemplazar objetos de forma atómica.</p>
+    <table class="method-table">
+      <thead><tr><th>Método</th><th>Descripción</th></tr></thead>
+      <tbody>
+        <tr><td><code>get()</code></td><td>Devuelve el objeto actual</td></tr>
+        <tr><td><code>set(v)</code></td><td>Reemplaza el objeto</td></tr>
+        <tr><td><code>getAndSet(v)</code></td><td>Devuelve el anterior y coloca el nuevo</td></tr>
+        <tr><td><code>getAndUpdate(fn)</code></td><td>Aplica función; devuelve el valor anterior</td></tr>
+        <tr><td><code>updateAndGet(fn)</code></td><td>Aplica función; devuelve el valor nuevo</td></tr>
+        <tr><td><code>compareAndSet(exp, upd)</code></td><td>Actualiza solo si el valor actual == exp (por referencia)</td></tr>
+      </tbody>
+    </table>
+    <pre><code class="language-java">record UserProfile(String name, int age) {}
+
+AtomicReference&lt;UserProfile&gt; ref =
+    new AtomicReference&lt;&gt;(new UserProfile("Ana", 25));
+
+// Actualización incondicional
+ref.set(new UserProfile("Pedro", 30));
+
+// Actualización condicional por nombre
+ref.getAndUpdate(p -&gt;
+    p.name().equals("Pedro") ? new UserProfile("Luis", 28) : p
+);
+
+// CAS — solo si el objeto es exactamente el esperado
+UserProfile esperado = ref.get();
+UserProfile nuevo    = new UserProfile("María", 22);
+boolean actualizado  = ref.compareAndSet(esperado, nuevo);</code></pre>
+    <div class="callout callout-info">
+      <p><strong>Nota:</strong> <code>compareAndSet</code> compara <em>por referencia</em> (<code>==</code>), no por <code>equals()</code>. Es el mecanismo CAS de hardware.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Patrón CAS en bucle (Compare-And-Swap)</h3>
+    <p>Cuando la actualización depende del valor actual y puede fallar si otro thread lo cambió mientras tanto, se usa un bucle hasta que la operación tenga éxito:</p>
+    <pre><code class="language-java">// Incrementar solo si el valor es menor que MAX
+AtomicInteger counter = new AtomicInteger(0);
+final int MAX = 5;
+
+boolean success = false;
+while (!success) {
+    int current = counter.get();
+    if (current &gt;= MAX) {
+        System.out.println("Límite alcanzado");
+        break;
+    }
+    success = counter.compareAndSet(current, current + 1);
+}</code></pre>
+    <p>Esto es equivalente a lo que hacen internamente <code>getAndUpdate</code> y <code>updateAndGet</code>.</p>
+  </div>
+
+  <!-- EJERCICIOS -->
+  <hr />
+  <div class="section-header">
+    <h2>Ejercicios</h2>
+    <span class="badge badge-ejerc">Ejercicios</span>
+  </div>
+
+  <!-- EX 1 -->
+  <div class="exercise-card ex-atomic" id="at-ex1">
+    <div class="exercise-header" onclick="toggleExercise('at-ex1')">
+      <div class="exercise-number">1</div>
+      <span class="exercise-title">🐦 DeepPurpleSky — tres formas de sincronizar</span>
+      <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div class="exercise-body">
+      <p>Un <code>Post</code> tiene contadores de <em>meGustas</em> y <em>rePublicaciones</em>. Se envían 5.000.000 operaciones de cada tipo de forma concurrente. Los contadores dan valores incorrectos.</p>
+      <p>Implementa la solución con <code>synchronized</code>, con <code>Lock</code> y con <code>atomic</code>. Compara el tiempo de ejecución.</p>
+
+      <h3>Código de partida</h3>
+      <pre><code class="language-java">import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.concurrent.Executors;
+
+public class Main {
+
+    static class Post {
+        int meGustas = 0;
+        int rePublicaciones = 0;
+
+        void meGusta() { meGustas++; }
+        void rePublicar() { rePublicaciones++; }
+    }
+
+    public static void main(String[] args) {
+        var startTime = LocalDateTime.now();
+        Post post = new Post();
+
+        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            for (int i = 0; i &lt; 5_000_000; i++) {
+                executor.submit(post::meGusta);
+                executor.submit(post::rePublicar);
+            }
+        }
+
+        System.out.println(post.meGustas);       // debería ser 5000000
+        System.out.println(post.rePublicaciones); // debería ser 5000000
+        System.out.println("Millis: " + ChronoUnit.MILLIS.between(startTime, LocalDateTime.now()));
+    }
+}</code></pre>
+
+      <button class="solution-toggle" onclick="toggleSolution('sol-at1')">▼ Ver solución (3 versiones)</button>
+      <div id="sol-at1" class="solution-body">
+        <div class="code-label">Versión 1 — synchronized</div>
+        <pre><code class="language-java">static class Post {
+    int meGustas = 0;
+    int rePublicaciones = 0;
+
+    synchronized void meGusta()    { meGustas++; }
+    synchronized void rePublicar() { rePublicaciones++; }
+}</code></pre>
+
+        <div class="code-label">Versión 2 — Lock</div>
+        <pre><code class="language-java">import java.util.concurrent.locks.*;
+
+static class Post {
+    int meGustas = 0;
+    int rePublicaciones = 0;
+    final Lock lock = new ReentrantLock();
+
+    void meGusta() {
+        lock.lock();
+        try { meGustas++; }
+        finally { lock.unlock(); }
+    }
+
+    void rePublicar() {
+        lock.lock();
+        try { rePublicaciones++; }
+        finally { lock.unlock(); }
+    }
+}</code></pre>
+
+        <div class="code-label">Versión 3 — AtomicInteger (más rápido)</div>
+        <pre><code class="language-java">import java.util.concurrent.atomic.*;
+
+static class Post {
+    AtomicInteger meGustas       = new AtomicInteger(0);
+    AtomicInteger rePublicaciones = new AtomicInteger(0);
+
+    void meGusta()    { meGustas.incrementAndGet(); }
+    void rePublicar() { rePublicaciones.incrementAndGet(); }
+}</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- EX 2 -->
+  <div class="exercise-card ex-atomic" id="at-ex2">
+    <div class="exercise-header" onclick="toggleExercise('at-ex2')">
+      <div class="exercise-number">2</div>
+      <span class="exercise-title">🌰 Autoincrement — generador de IDs únicos</span>
+      <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div class="exercise-body">
+      <p>Implementa un generador de IDs únicos seguro para entornos multihilo.</p>
+      <ul class="steps">
+        <li><div class="step-num">1</div><span>Clase <code>UniqueIDGenerator</code> con <code>AtomicLong</code> inicializado en 1.</span></li>
+        <li><div class="step-num">2</div><span>Método <code>generateID()</code> que devuelve el siguiente ID incrementando el <code>AtomicLong</code>.</span></li>
+        <li><div class="step-num">3</div><span>10 threads generan 500 IDs cada uno. Verifica que no haya duplicados.</span></li>
+      </ul>
+
+      <button class="solution-toggle" onclick="toggleSolution('sol-at2')">▼ Ver solución</button>
+      <div id="sol-at2" class="solution-body">
+        <pre><code class="language-java">import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
+
+public class Main {
+
+    static class UniqueIDGenerator {
+        private final AtomicLong counter = new AtomicLong(1);
+
+        long generateID() {
+            return counter.incrementAndGet();
+        }
+    }
+
+    public static void main(String[] args) {
+        var generator = new UniqueIDGenerator();
+        Set&lt;Long&gt; ids = ConcurrentHashMap.newKeySet();
+
+        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            for (int t = 0; t &lt; 10; t++) {
+                executor.submit(() -&gt; {
+                    for (int i = 0; i &lt; 500; i++) {
+                        ids.add(generator.generateID());
+                    }
+                });
+            }
+        }
+
+        System.out.println("IDs generados: " + ids.size()); // debe ser 5000
+        System.out.println("¿Duplicados? " + (ids.size() == 5000 ? "No" : "SÍ"));
+    }
+}</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- EX 3 -->
+  <div class="exercise-card ex-atomic" id="at-ex3">
+    <div class="exercise-header" onclick="toggleExercise('at-ex3')">
+      <div class="exercise-number">3</div>
+      <span class="exercise-title">👨‍👨‍👦‍👦 Control de acceso — máximo de usuarios</span>
+      <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div class="exercise-body">
+      <p>Sistema que limita el número máximo de usuarios simultáneos (por ejemplo, 5).</p>
+      <ul class="steps">
+        <li><div class="step-num">1</div><span><code>connect()</code>: incrementa el contador si hay hueco disponible; si no, muestra "acceso bloqueado".</span></li>
+        <li><div class="step-num">2</div><span><code>disconnect()</code>: decrementa, asegurando que no quede negativo.</span></li>
+        <li><div class="step-num">3</div><span>Nunca se debe superar el límite máximo aunque muchos threads conecten a la vez.</span></li>
+      </ul>
+      <div class="callout callout-info">
+        <p><strong>Clave:</strong> usa un bucle con <code>compareAndSet</code> para que la comprobación y el incremento sean atómicos juntos.</p>
+      </div>
+
+      <button class="solution-toggle" onclick="toggleSolution('sol-at3')">▼ Ver solución</button>
+      <div id="sol-at3" class="solution-body">
+        <pre><code class="language-java">import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class Main {
+
+    static class AccessControl {
+        private final AtomicInteger currentUsers = new AtomicInteger(0);
+        private final int maxUsers;
+
+        AccessControl(int maxUsers) { this.maxUsers = maxUsers; }
+
+        boolean connect() {
+            while (true) {
+                int current = currentUsers.get();
+                if (current &gt;= maxUsers) {
+                    System.out.println("Acceso bloqueado. Usuarios: " + current + "/" + maxUsers);
+                    return false;
+                }
+                if (currentUsers.compareAndSet(current, current + 1)) {
+                    System.out.println("Conectado. Usuarios: " + (current + 1) + "/" + maxUsers);
+                    return true;
+                }
+                // otro thread lo cambió mientras tanto, reintentar
+            }
+        }
+
+        void disconnect() {
+            while (true) {
+                int current = currentUsers.get();
+                if (current &lt;= 0) return;
+                if (currentUsers.compareAndSet(current, current - 1)) {
+                    System.out.println("Desconectado. Usuarios: " + (current - 1) + "/" + maxUsers);
+                    return;
+                }
+            }
+        }
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        var control = new AccessControl(5);
+
+        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            for (int i = 0; i &lt; 20; i++) {
+                executor.submit(() -&gt; {
+                    boolean connected = control.connect();
+                    if (connected) {
+                        try { Thread.sleep(100); }
+                        catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+                        control.disconnect();
+                    }
+                });
+            }
+        }
+    }
+}</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- EX 4 -->
+  <div class="exercise-card ex-atomic" id="at-ex4">
+    <div class="exercise-header" onclick="toggleExercise('at-ex4')">
+      <div class="exercise-number">4</div>
+      <span class="exercise-title">🗣 Actualizar perfil — AtomicReference</span>
+      <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div class="exercise-body">
+      <p>Gestiona un <code>UserProfile</code> compartido con tres métodos de actualización:</p>
+      <ul>
+        <li><code>updateProfile(name, age)</code> → usa <code>set()</code> — actualización incondicional.</li>
+        <li><code>updateProfile(expectedName, newName, age)</code> → usa <code>getAndUpdate()</code> — solo actualiza si el nombre coincide.</li>
+        <li><code>updateProfile(expected, newProfile)</code> → usa <code>compareAndSet()</code> — solo si la referencia es la misma.</li>
+      </ul>
+
+      <button class="solution-toggle" onclick="toggleSolution('sol-at4')">▼ Ver solución</button>
+      <div id="sol-at4" class="solution-body">
+        <pre><code class="language-java">import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
+
+public class Main {
+
+    record UserProfile(String name, int age) {}
+
+    static class UserProfileUpdater {
+        private final AtomicReference&lt;UserProfile&gt; ref =
+            new AtomicReference&lt;&gt;(new UserProfile("Juan Doe", 25));
+
+        // 1. Actualización incondicional
+        void updateProfile(String newName, int newAge) {
+            ref.set(new UserProfile(newName, newAge));
+            System.out.println("set() → " + ref.get());
+        }
+
+        // 2. Solo si el nombre actual coincide
+        void updateProfile(String expectedName, String newName, int newAge) {
+            UserProfile prev = ref.getAndUpdate(p -&gt;
+                p.name().equals(expectedName) ? new UserProfile(newName, newAge) : p
+            );
+            if (prev.name().equals(expectedName))
+                System.out.println("getAndUpdate() actualizó: " + ref.get());
+            else
+                System.out.println("getAndUpdate() no actualizó (nombre='"+prev.name()+"' ≠ '"+expectedName+"')");
+        }
+
+        // 3. Solo si la referencia es exactamente la esperada
+        boolean updateProfile(UserProfile expected, UserProfile newProfile) {
+            boolean ok = ref.compareAndSet(expected, newProfile);
+            System.out.println("compareAndSet() " + (ok ? "éxito" : "falló") + " → " + ref.get());
+            return ok;
+        }
+
+        UserProfile getProfile() { return ref.get(); }
+    }
+
+    public static void main(String[] args) {
+        var updater = new UserProfileUpdater();
+
+        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            executor.submit(() -&gt; updater.updateProfile("Nuevo1", 30));
+            executor.submit(() -&gt; updater.updateProfile("Juan Doe", "Pedro", 28));
+            UserProfile expected = updater.getProfile();
+            executor.submit(() -&gt; updater.updateProfile(expected, new UserProfile("María", 22)));
+        }
+
+        System.out.println("Perfil final: " + updater.getProfile());
+    }
+}</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- EX 5 -->
+  <div class="exercise-card ex-atomic" id="at-ex5">
+    <div class="exercise-header" onclick="toggleExercise('at-ex5')">
+      <div class="exercise-number">5</div>
+      <span class="exercise-title">🧎🏽‍♀️ TaskState — máquina de estados atómica</span>
+      <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div class="exercise-body">
+      <p>Implementa la gestión del estado de una tarea con transiciones válidas: <code>INIT → PROCESSING → COMPLETED</code>.</p>
+      <ul class="steps">
+        <li><div class="step-num">1</div><span>Clase <code>Task</code> con <code>AtomicReference&lt;TaskState&gt;</code> (enum: INIT, PROCESSING, COMPLETED).</span></li>
+        <li><div class="step-num">2</div><span><code>setState(newState)</code>: valida la transición con <code>compareAndSet</code>.</span></li>
+        <li><div class="step-num">3</div><span><code>run()</code>: cambia a PROCESSING, llama a <code>perform()</code>, cambia a COMPLETED.</span></li>
+        <li><div class="step-num">4</div><span><code>perform()</code>: método abstracto. Varios threads intentan ejecutar la misma tarea — solo uno lo consigue.</span></li>
+      </ul>
+
+      <button class="solution-toggle" onclick="toggleSolution('sol-at5')">▼ Ver solución</button>
+      <div id="sol-at5" class="solution-body">
+        <pre><code class="language-java">import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
+
+public class Main {
+
+    enum TaskState { INIT, PROCESSING, COMPLETED }
+
+    abstract static class Task {
+        private final AtomicReference&lt;TaskState&gt; state =
+            new AtomicReference&lt;&gt;(TaskState.INIT);
+
+        TaskState getState() { return state.get(); }
+
+        boolean setState(TaskState newState) {
+            TaskState current = state.get();
+            boolean valid = switch (newState) {
+                case PROCESSING -&gt; current == TaskState.INIT;
+                case COMPLETED  -&gt; current == TaskState.PROCESSING;
+                default         -&gt; false;
+            };
+            if (!valid) return false;
+            return state.compareAndSet(current, newState);
+        }
+
+        void run() {
+            if (!setState(TaskState.PROCESSING)) {
+                System.out.println(Thread.currentThread().getName()
+                    + " no pudo iniciar la tarea (estado=" + getState() + ")");
+                return;
+            }
+            System.out.println(Thread.currentThread().getName() + " ejecutando tarea...");
+            perform();
+            setState(TaskState.COMPLETED);
+            System.out.println(Thread.currentThread().getName() + " tarea completada.");
+        }
+
+        abstract void perform();
+    }
+
+    public static void main(String[] args) {
+        Task tarea = new Task() {
+            @Override
+            public void perform() {
+                try { Thread.sleep(200); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+                System.out.println("  [perform] trabajo hecho por " + Thread.currentThread().getName());
+            }
+        };
+
+        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            for (int i = 0; i &lt; 5; i++) {
+                executor.submit(tarea::run);
+            }
+        }
+
+        System.out.println("Estado final: " + tarea.getState());
+    }
+}</code></pre>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+
+<!-- ═══════════════════════════════════════════════
+     TAB 3 — CONCURRENT COLLECTIONS
+═══════════════════════════════════════════════ -->
+<section id="tab-collection" class="tab-panel">
+
+  <div class="topic-intro">
+    <h2>🏮 Colecciones Concurrentes</h2>
+    <p>El paquete <code>java.util.concurrent</code> ofrece implementaciones thread-safe del Java Collections Framework. Definen una relación <em>happens-before</em> entre escrituras y lecturas.</p>
+    <div style="margin-top:0.75rem">
+      <span class="tag tag-collection">ConcurrentHashMap</span>
+      <span class="tag tag-collection">CopyOnWriteArrayList</span>
+      <span class="tag tag-collection">BlockingQueue</span>
+      <span class="tag tag-collection">ConcurrentSkipListMap</span>
+    </div>
+  </div>
+
+  <!-- TEORIA -->
+  <div class="section-header">
+    <h2>Teoría</h2>
+    <span class="badge badge-teoria">Teoría</span>
+  </div>
+
+  <div class="card">
+    <h3>¿Por qué no usar HashMap o ArrayList en threads?</h3>
+    <p>Las colecciones estándar (<code>HashMap</code>, <code>ArrayList</code>, etc.) no son thread-safe. Si varios threads las modifican simultáneamente puede producirse:</p>
+    <ul>
+      <li><strong>Race condition:</strong> dos threads leen el mismo valor, lo modifican, y uno sobreescribe el trabajo del otro.</li>
+      <li><strong>ConcurrentModificationException:</strong> un thread modifica la colección mientras otro la itera.</li>
+      <li><strong>Datos corruptos:</strong> estructuras internas incoherentes (nodos perdidos en HashMap, etc.).</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>ConcurrentHashMap</h3>
+    <p>Versión thread-safe de <code>HashMap</code>. <strong>No bloquea toda la tabla</strong>; divide el mapa en segmentos y bloquea solo el necesario.</p>
+    <table class="method-table">
+      <thead><tr><th>Método</th><th>Descripción</th></tr></thead>
+      <tbody>
+        <tr><td><code>put(k,v)</code></td><td>Inserta/reemplaza de forma segura</td></tr>
+        <tr><td><code>putIfAbsent(k,v)</code></td><td>Solo inserta si la clave no existe. Atómico.</td></tr>
+        <tr><td><code>computeIfAbsent(k, fn)</code></td><td>Si la clave no existe, calcula el valor con fn y lo inserta. Atómico.</td></tr>
+        <tr><td><code>compute(k, fn)</code></td><td>Aplica fn(clave, valorActual→nuevoValor). Atómico. Si resulta null, elimina.</td></tr>
+        <tr><td><code>merge(k, v, fn)</code></td><td>Si no existe: inserta v. Si existe: aplica fn(valorAnterior, v). Atómico.</td></tr>
+        <tr><td><code>getOrDefault(k, def)</code></td><td>Devuelve el valor o el defecto si no existe</td></tr>
+      </tbody>
+    </table>
+    <pre><code class="language-java">ConcurrentHashMap&lt;String, Integer&gt; conteo = new ConcurrentHashMap&lt;&gt;();
+
+// Contar palabras de forma segura:
+conteo.merge("manzana", 1, Integer::sum);
+
+// Crear lista si la clave no existe:
+ConcurrentHashMap&lt;String, List&lt;String&gt;&gt; grupos = new ConcurrentHashMap&lt;&gt;();
+grupos.computeIfAbsent("admin", k -&gt; new ArrayList&lt;&gt;()).add("user1");
+
+// Actualizar solo si existe:
+conteo.compute("manzana", (k, v) -&gt; v == null ? 1 : v + 1);</code></pre>
+  </div>
+
+  <div class="card">
+    <h3>CopyOnWriteArrayList</h3>
+    <p>Versión thread-safe de <code>ArrayList</code>. Cada modificación (<code>add</code>, <code>set</code>, <code>remove</code>) <strong>crea una copia nueva</strong> del array subyacente. Los iteradores trabajan sobre la copia anterior, por lo que nunca lanzan <code>ConcurrentModificationException</code>.</p>
+    <div class="callout callout-warning">
+      <p><strong>Cuándo usarla:</strong> listas donde las <strong>lecturas son mucho más frecuentes</strong> que las escrituras. Si hay muchas escrituras, el coste de copiar el array en cada operación es elevado.</p>
+    </div>
+    <pre><code class="language-java">CopyOnWriteArrayList&lt;String&gt; lista = new CopyOnWriteArrayList&lt;&gt;();
+
+// Múltiples threads pueden añadir de forma segura:
+lista.add("elemento");
+
+// Iteración segura aunque otros threads modifiquen la lista:
+for (String item : lista) {
+    System.out.println(item);
+}</code></pre>
+  </div>
+
+  <div class="card">
+    <h3>Otras colecciones del paquete concurrent</h3>
+    <table class="method-table">
+      <thead><tr><th>Clase</th><th>Basada en</th><th>Caso de uso</th></tr></thead>
+      <tbody>
+        <tr><td><code>LinkedBlockingQueue</code></td><td>Queue</td><td>Productor-consumidor; bloquea si vacía/llena</td></tr>
+        <tr><td><code>ArrayBlockingQueue</code></td><td>Queue</td><td>Como anterior, pero con capacidad fija</td></tr>
+        <tr><td><code>ConcurrentSkipListMap</code></td><td>SortedMap</td><td>Mapa ordenado thread-safe</td></tr>
+        <tr><td><code>ConcurrentSkipListSet</code></td><td>SortedSet</td><td>Set ordenado thread-safe</td></tr>
+        <tr><td><code>CopyOnWriteArraySet</code></td><td>Set</td><td>Set con semántica copy-on-write</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>Patrón seguro: ConcurrentHashMap + CopyOnWriteArrayList</h3>
+    <p>Combinación muy común para estructuras de tipo "mapa de listas":</p>
+    <pre><code class="language-java">// Mapa de grupos → lista de usuarios
+ConcurrentHashMap&lt;String, CopyOnWriteArrayList&lt;String&gt;&gt; grupos =
+    new ConcurrentHashMap&lt;&gt;();
+
+// Añadir usuario a grupo (creando el grupo si no existe)
+grupos.computeIfAbsent("grupo1", k -&gt; new CopyOnWriteArrayList&lt;&gt;())
+      .add("usuario1");
+
+// Eliminar usuario de grupo; si queda vacío, eliminar grupo
+grupos.computeIfPresent("grupo1", (k, v) -&gt; {
+    v.remove("usuario1");
+    return v.isEmpty() ? null : v;  // null → elimina la entrada
+});</code></pre>
+  </div>
+
+  <!-- EJERCICIOS -->
+  <hr />
+  <div class="section-header">
+    <h2>Ejercicios</h2>
+    <span class="badge badge-ejerc">Ejercicios</span>
+  </div>
+
+  <!-- EX 1 -->
+  <div class="exercise-card ex-collection" id="col-ex1">
+    <div class="exercise-header" onclick="toggleExercise('col-ex1')">
+      <div class="exercise-number">1</div>
+      <span class="exercise-title">📊 Histograma de frutas</span>
+      <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div class="exercise-body">
+      <p>Cuenta cuántas veces aparece cada fruta en un array usando <strong>4 threads</strong>, donde cada uno procesa un cuarto del array. Demuestra la race condition con <code>HashMap</code> y corrígela con <code>ConcurrentHashMap</code>.</p>
+      <p>Resultado esperado: <code>pera: 18 | manzana: 24 | uva: 16 | naranja: 38</code></p>
+
+      <h3>Fragmento del array</h3>
+      <pre><code class="language-java">String[] palabras = {
+    "manzana", "pera", "naranja", "uva", "manzana", "naranja", "naranja", "uva",
+    "naranja", "manzana", "naranja", "uva", "manzana", "naranja", "naranja", "uva",
+    // ... (96 elementos en total)
+};</code></pre>
+
+      <div class="callout callout-info">
+        <p><strong>Método clave:</strong> <code>map.merge(fruta, 1, Integer::sum)</code> — atómico en <code>ConcurrentHashMap</code>, pero no en <code>HashMap</code>.</p>
+      </div>
+
+      <button class="solution-toggle" onclick="toggleSolution('sol-col1')">▼ Ver solución</button>
+      <div id="sol-col1" class="solution-body">
+        <pre><code class="language-java">import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+
+public class Main {
+    static final String[] palabras = {
+        "manzana","pera","naranja","uva","manzana","naranja","naranja","uva",
+        "naranja","manzana","naranja","uva","manzana","naranja","naranja","uva",
+        "manzana","naranja","naranja","uva","naranja","manzana","naranja","uva",
+        "pera","naranja","pera","naranja","uva","naranja","naranja","manzana",
+        "pera","pera","naranja","manzana","naranja","naranja","pera","manzana",
+        "uva","naranja","manzana","pera","pera","naranja","naranja","manzana",
+        "pera","naranja","uva","pera","manzana","naranja","naranja","naranja",
+        "pera","uva","manzana","naranja","pera","uva","naranja","manzana",
+        "naranja","manzana","uva","pera","pera","naranja","uva","manzana",
+        "naranja","uva","manzana","naranja","pera","naranja","manzana","pera",
+        "naranja","uva","manzana","pera","manzana","naranja","manzana","pera",
+        "naranja","manzana","manzana","naranja","uva","naranja","manzana","naranja"
+    };
+
+    static void contar(Map&lt;String, Integer&gt; mapa) {
+        int cuarto = palabras.length / 4;
+        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            for (int t = 0; t &lt; 4; t++) {
+                final int inicio = t * cuarto;
+                final int fin    = (t == 3) ? palabras.length : inicio + cuarto;
+                executor.submit(() -&gt; {
+                    for (int i = inicio; i &lt; fin; i++) {
+                        mapa.merge(palabras[i], 1, Integer::sum);
+                    }
+                });
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        System.out.println("=== HashMap (puede tener errores) ===");
+        Map&lt;String, Integer&gt; mapaUnsafe = new HashMap&lt;&gt;();
+        contar(mapaUnsafe);
+        mapaUnsafe.forEach((k, v) -&gt; System.out.println(k + ": " + v));
+
+        System.out.println("\n=== ConcurrentHashMap (correcto) ===");
+        Map&lt;String, Integer&gt; mapaSafe = new ConcurrentHashMap&lt;&gt;();
+        contar(mapaSafe);
+        mapaSafe.forEach((k, v) -&gt; System.out.println(k + ": " + v));
+    }
+}</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- EX 2 -->
+  <div class="exercise-card ex-collection" id="col-ex2">
+    <div class="exercise-header" onclick="toggleExercise('col-ex2')">
+      <div class="exercise-number">2</div>
+      <span class="exercise-title">🏨 Reservas de hotel</span>
+      <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div class="exercise-body">
+      <p>Sistema de reservas concurrente para habitaciones. Las reservas no deben solaparse en la misma habitación.</p>
+      <ul class="steps">
+        <li><div class="step-num">1</div><span>Usa un <code>ConcurrentHashMap&lt;String, List&lt;Reserva&gt;&gt;</code> (habitación → lista de reservas).</span></li>
+        <li><div class="step-num">2</div><span>Al reservar, comprueba que no hay solapamiento con reservas existentes.</span></li>
+        <li><div class="step-num">3</div><span>La comprobación + inserción debe ser atómica para la misma habitación (usa <code>synchronized</code> sobre la lista de esa habitación).</span></li>
+      </ul>
+
+      <button class="solution-toggle" onclick="toggleSolution('sol-col2')">▼ Ver solución</button>
+      <div id="sol-col2" class="solution-body">
+        <pre><code class="language-java">import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+
+public class Main {
+
+    record Reserva(String usuario, String habitacion, LocalTime inicio, LocalTime fin) {}
+
+    static class SistemaReservas {
+        private final ConcurrentHashMap&lt;String, List&lt;Reserva&gt;&gt; reservas =
+            new ConcurrentHashMap&lt;&gt;();
+
+        boolean reservar(String usuario, String habitacion, LocalTime inicio, LocalTime fin) {
+            // Obtener o crear la lista de reservas para esta habitación
+            List&lt;Reserva&gt; listaHab = reservas.computeIfAbsent(habitacion, k -&gt; new ArrayList&lt;&gt;());
+
+            // Sincronizar sobre la lista específica de la habitación
+            synchronized (listaHab) {
+                boolean solapamiento = listaHab.stream().anyMatch(r -&gt;
+                    inicio.isBefore(r.fin()) && fin.isAfter(r.inicio())
+                );
+                if (solapamiento) {
+                    System.out.println("❌ " + usuario + ": " + habitacion +
+                        " " + inicio + "-" + fin + " ya está ocupada");
+                    return false;
+                }
+                listaHab.add(new Reserva(usuario, habitacion, inicio, fin));
+                System.out.println("✅ " + usuario + ": " + habitacion +
+                    " " + inicio + "-" + fin + " reservada");
+                return true;
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        var sistema = new SistemaReservas();
+
+        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            executor.submit(() -&gt; sistema.reservar("Ana",   "101", LocalTime.of(9,0),  LocalTime.of(11,0)));
+            executor.submit(() -&gt; sistema.reservar("Pedro", "101", LocalTime.of(10,0), LocalTime.of(12,0))); // solapamiento
+            executor.submit(() -&gt; sistema.reservar("Luis",  "101", LocalTime.of(11,0), LocalTime.of(13,0)));
+            executor.submit(() -&gt; sistema.reservar("María", "102", LocalTime.of(9,0),  LocalTime.of(11,0)));
+            executor.submit(() -&gt; sistema.reservar("Juan",  "102", LocalTime.of(9,0),  LocalTime.of(10,0))); // solapamiento
+        }
+    }
+}</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- EX 3 -->
+  <div class="exercise-card ex-collection" id="col-ex3">
+    <div class="exercise-header" onclick="toggleExercise('col-ex3')">
+      <div class="exercise-number">3</div>
+      <span class="exercise-title">🎎 Grupos de chat</span>
+      <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div class="exercise-body">
+      <p>Sistema para gestionar grupos de chat de forma concurrente. Permite añadir/eliminar grupos y usuarios dentro de ellos.</p>
+      <ul>
+        <li><code>addUserToGroup(user, group)</code>: añade usuario; crea el grupo si no existe. Devuelve <code>false</code> si ya estaba.</li>
+        <li><code>removeUserFromGroup(user, group)</code>: quita usuario; elimina el grupo si queda vacío. Devuelve <code>false</code> si no estaba.</li>
+        <li><code>deleteGroup(group)</code>: elimina el grupo. Devuelve <code>false</code> si no existía.</li>
+      </ul>
+
+      <button class="solution-toggle" onclick="toggleSolution('sol-col3')">▼ Ver solución</button>
+      <div id="sol-col3" class="solution-body">
+        <pre><code class="language-java">import java.util.List;
+import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+public class Main {
+
+    static class GroupsManager {
+        private final ConcurrentHashMap&lt;String, Set&lt;String&gt;&gt; grupos =
+            new ConcurrentHashMap&lt;&gt;();
+
+        boolean addUserToGroup(String user, String group) {
+            Set&lt;String&gt; members = grupos.computeIfAbsent(group,
+                k -&gt; new CopyOnWriteArraySet&lt;&gt;());
+            boolean added = members.add(user);
+            if (added) System.out.println("+ " + user + " → " + group);
+            return added;
+        }
+
+        boolean removeUserFromGroup(String user, String group) {
+            Set&lt;String&gt; members = grupos.get(group);
+            if (members == null) return false;
+            boolean removed = members.remove(user);
+            if (removed) {
+                grupos.computeIfPresent(group, (k, v) -&gt; v.isEmpty() ? null : v);
+                System.out.println("- " + user + " ← " + group);
+            }
+            return removed;
+        }
+
+        boolean deleteGroup(String group) {
+            boolean existed = grupos.remove(group) != null;
+            if (existed) System.out.println("🗑 " + group + " eliminado");
+            return existed;
+        }
+
+        void printState() {
+            grupos.forEach((g, users) -&gt;
+                System.out.println("  [" + g + "] " + users));
+        }
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        var manager = new GroupsManager();
+        var users  = List.of("usera","userb","userc","userd","usere","userf","userg","userh");
+        var groups = List.of("group1","group2","group3","group4");
+        var rnd = new Random();
+
+        var executor = Executors.newVirtualThreadPerTaskExecutor();
+
+        for (int i = 0; i &lt; 30; i++) {
+            final String user  = users.get(rnd.nextInt(users.size()));
+            final String group = groups.get(rnd.nextInt(groups.size()));
+            if (rnd.nextBoolean()) {
+                executor.submit(() -&gt; manager.addUserToGroup(user, group));
+            } else {
+                executor.submit(() -&gt; manager.removeUserFromGroup(user, group));
+            }
+        }
+
+        executor.awaitTermination(2, TimeUnit.SECONDS);
+        executor.shutdown();
+
+        System.out.println("\nEstado final:");
+        manager.printState();
+    }
+}</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- EX 4 -->
+  <div class="exercise-card ex-collection" id="col-ex4">
+    <div class="exercise-header" onclick="toggleExercise('col-ex4')">
+      <div class="exercise-number">4</div>
+      <span class="exercise-title">🤪 WrongList — race condition en ArrayList</span>
+      <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div class="exercise-body">
+      <p>Demuestra que un <code>ArrayList</code> compartido entre threads puede producir errores. Corige con <code>CopyOnWriteArrayList</code>.</p>
+
+      <button class="solution-toggle" onclick="toggleSolution('sol-col4')">▼ Ver solución</button>
+      <div id="sol-col4" class="solution-body">
+        <pre><code class="language-java">import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executors;
+
+public class Main {
+
+    public static void main(String[] args) {
+        // === Versión INSEGURA con ArrayList ===
+        System.out.println("--- ArrayList (inseguro) ---");
+        List&lt;String&gt; listaUnsafe = new ArrayList&lt;&gt;();
+        try (var exec = Executors.newVirtualThreadPerTaskExecutor()) {
+            for (int i = 0; i &lt; 1000; i++) {
+                final int n = i;
+                exec.submit(() -&gt; listaUnsafe.add("item-" + n));
+            }
+        }
+        // Puede fallar: tamaño incorrecto, NullPointerException, ArrayIndexOutOfBoundsException...
+        System.out.println("Tamaño esperado: 1000, real: " + listaUnsafe.size());
+
+        // === Versión SEGURA con CopyOnWriteArrayList ===
+        System.out.println("\n--- CopyOnWriteArrayList (seguro) ---");
+        List&lt;String&gt; listaSafe = new CopyOnWriteArrayList&lt;&gt;();
+        try (var exec = Executors.newVirtualThreadPerTaskExecutor()) {
+            for (int i = 0; i &lt; 1000; i++) {
+                final int n = i;
+                exec.submit(() -&gt; listaSafe.add("item-" + n));
+            }
+        }
+        System.out.println("Tamaño esperado: 1000, real: " + listaSafe.size());
+    }
+}</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- EX 5 -->
+  <div class="exercise-card ex-collection" id="col-ex5">
+    <div class="exercise-header" onclick="toggleExercise('col-ex5')">
+      <div class="exercise-number">5</div>
+      <span class="exercise-title">🫂 Messenger — mensajes con expiración</span>
+      <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div class="exercise-body">
+      <p>Sistema de mensajería donde múltiples threads de usuario envían mensajes y un thread de servicio elimina los mensajes con más de 3 segundos de antigüedad.</p>
+      <ul class="steps">
+        <li><div class="step-num">1</div><span>Usa <code>CopyOnWriteArrayList&lt;Mensaje&gt;</code> para la lista compartida.</span></li>
+        <li><div class="step-num">2</div><span>Threads de usuario: añaden mensajes aleatorios cada 2-4 segundos.</span></li>
+        <li><div class="step-num">3</div><span>Thread de servicio: cada 100ms elimina mensajes con más de 3 segundos.</span></li>
+        <li><div class="step-num">4</div><span>El número de mensajes debería mantenerse cercano al número de usuarios.</span></li>
+      </ul>
+
+      <button class="solution-toggle" onclick="toggleSolution('sol-col5')">▼ Ver solución</button>
+      <div id="sol-col5" class="solution-body">
+        <pre><code class="language-java">import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Random;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+public class Main {
+
+    record Mensaje(String text, LocalDateTime date) {
+        Mensaje(String text) { this(text, LocalDateTime.now()); }
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        var mensajes = new CopyOnWriteArrayList&lt;Mensaje&gt;();
+        var rnd = new Random();
+        var usuarios = List.of("Ana","Pedro","Luis","María","Juan");
+
+        var executor = Executors.newVirtualThreadPerTaskExecutor();
+
+        // Threads de usuario
+        for (String usuario : usuarios) {
+            executor.submit(() -&gt; {
+                while (!Thread.currentThread().isInterrupted()) {
+                    try {
+                        String texto = usuario + ": msg-" + rnd.nextInt(1000);
+                        mensajes.add(new Mensaje(texto));
+                        System.out.println("[+" + usuario + "] total mensajes: " + mensajes.size());
+                        Thread.sleep(2000 + rnd.nextInt(2000)); // 2-4 segundos
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            });
+        }
+
+        // Thread de servicio — limpia mensajes &gt; 3 segundos
+        executor.submit(() -&gt; {
+            while (!Thread.currentThread().isInterrupted()) {
+                try {
+                    LocalDateTime limite = LocalDateTime.now().minus(3, ChronoUnit.SECONDS);
+                    mensajes.removeIf(m -&gt; m.date().isBefore(limite));
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        });
+
+        executor.awaitTermination(15, TimeUnit.SECONDS);
+        executor.shutdownNow();
+
+        System.out.println("\nMensajes finales: " + mensajes.size());
+    }
+}</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- EX 6 -->
+  <div class="exercise-card ex-collection" id="col-ex6">
+    <div class="exercise-header" onclick="toggleExercise('col-ex6')">
+      <div class="exercise-number">6</div>
+      <span class="exercise-title">🤼‍♀️ Lista de la compra colaborativa</span>
+      <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div class="exercise-body">
+      <p>Cuatro threads operan concurrentemente sobre una lista de la compra: uno añade items, otro cambia su estado, otro elimina items y otro muestra la lista.</p>
+      <p>Usa el siguiente <code>record</code> para los items:</p>
+      <pre><code class="language-java">record Item(String description, AtomicReference&lt;State&gt; state) {
+    enum State { CHECKED, UNCHECKED }
+
+    Item(String description) {
+        this(description, new AtomicReference&lt;&gt;(Item.State.UNCHECKED));
+    }
+
+    void setState(State newState) { state.set(newState); }
+}</code></pre>
+      <div class="callout callout-info">
+        <p><strong>¿Por qué <code>AtomicReference</code> en el record?</strong> Los records son inmutables: no puedes cambiar sus campos. Pero <code>AtomicReference</code> permite mutar el estado que apunta, manteniendo la referencia constante.</p>
+      </div>
+
+      <button class="solution-toggle" onclick="toggleSolution('sol-col6')">▼ Ver solución</button>
+      <div id="sol-col6" class="solution-body">
+        <pre><code class="language-java">import java.util.Random;
+import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+
+public class Main {
+
+    record Item(String description, AtomicReference&lt;Item.State&gt; state) {
+        enum State { CHECKED, UNCHECKED }
+
+        Item(String description) {
+            this(description, new AtomicReference&lt;&gt;(Item.State.UNCHECKED));
+        }
+
+        void setState(State newState) { state.set(newState); }
+
+        @Override public String toString() {
+            return "[" + (state.get() == State.CHECKED ? "✓" : " ") + "] " + description;
+        }
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        var lista = new CopyOnWriteArrayList&lt;Item&gt;();
+        var rnd   = new Random();
+
+        var executor = Executors.newVirtualThreadPerTaskExecutor();
+
+        // Thread 1: añadir items (máx 10)
+        executor.submit(() -&gt; {
+            while (!Thread.currentThread().isInterrupted()) {
+                try {
+                    if (lista.size() &lt; 10) {
+                        lista.add(new Item(UUID.randomUUID().toString().substring(0, 6)));
+                    }
+                    Thread.sleep(300);
+                } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            }
+        });
+
+        // Thread 2: cambiar estado de un item aleatorio
+        executor.submit(() -&gt; {
+            while (!Thread.currentThread().isInterrupted()) {
+                try {
+                    if (!lista.isEmpty()) {
+                        Item item = lista.get(rnd.nextInt(lista.size()));
+                        item.setState(rnd.nextBoolean() ? Item.State.CHECKED : Item.State.UNCHECKED);
+                    }
+                    Thread.sleep(400);
+                } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            }
+        });
+
+        // Thread 3: eliminar un item aleatorio
+        executor.submit(() -&gt; {
+            while (!Thread.currentThread().isInterrupted()) {
+                try {
+                    if (!lista.isEmpty()) {
+                        lista.remove(rnd.nextInt(lista.size()));
+                    }
+                    Thread.sleep(600);
+                } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            }
+        });
+
+        // Thread 4: mostrar la lista
+        executor.submit(() -&gt; {
+            while (!Thread.currentThread().isInterrupted()) {
+                try {
+                    System.out.println("--- Lista (" + lista.size() + " items) ---");
+                    lista.forEach(System.out::println);
+                    Thread.sleep(1500);
+                } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            }
+        });
+
+        executor.awaitTermination(10, TimeUnit.SECONDS);
+        executor.shutdownNow();
+    }
+}</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- EX 7 -->
+  <div class="exercise-card ex-collection" id="col-ex7">
+    <div class="exercise-header" onclick="toggleExercise('col-ex7')">
+      <div class="exercise-number">7</div>
+      <span class="exercise-title">🎁 Inventario de productos</span>
+      <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div class="exercise-body">
+      <p>Inventario con IDs autoincrement. Threads de compra reducen el stock; threads de reposición lo aumentan. Un thread muestra el inventario periódicamente.</p>
+      <ul class="steps">
+        <li><div class="step-num">1</div><span>Usa <code>record Producto</code> con <code>int id</code>, <code>String nombre</code>, <code>AtomicInteger stock</code>.</span></li>
+        <li><div class="step-num">2</div><span>El <code>id</code> se genera con un <code>static AtomicInteger</code> en el record.</span></li>
+        <li><div class="step-num">3</div><span>Inicializa 5 productos en un <code>CopyOnWriteArrayList</code>.</span></li>
+        <li><div class="step-num">4</div><span>Varios threads simulan compras y reposiciones aleatorias.</span></li>
+      </ul>
+
+      <button class="solution-toggle" onclick="toggleSolution('sol-col7')">▼ Ver solución</button>
+      <div id="sol-col7" class="solution-body">
+        <pre><code class="language-java">import java.util.List;
+import java.util.Random;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class Main {
+
+    record Producto(int id, String nombre, AtomicInteger stock) {
+        private static final AtomicInteger nextId = new AtomicInteger(0);
+
+        Producto(String nombre, int stockInicial) {
+            this(nextId.incrementAndGet(), nombre, new AtomicInteger(stockInicial));
+        }
+
+        void aumentarStock(int cantidad) { stock.addAndGet(cantidad); }
+
+        void disminuirStock(int cantidad) {
+            stock.updateAndGet(s -&gt; Math.max(0, s - cantidad));
+        }
+
+        @Override public String toString() {
+            return String.format("Prod#%d %-12s stock: %d", id, nombre, stock.get());
+        }
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        var inventario = new CopyOnWriteArrayList&lt;&gt;(List.of(
+            new Producto("Manzanas",  50),
+            new Producto("Peras",     30),
+            new Producto("Naranjas",  80),
+            new Producto("Uvas",      20),
+            new Producto("Mangos",    15)
+        ));
+        var rnd = new Random();
+
+        var executor = Executors.newVirtualThreadPerTaskExecutor();
+
+        // Threads de compra
+        for (int i = 0; i &lt; 3; i++) {
+            executor.submit(() -&gt; {
+                while (!Thread.currentThread().isInterrupted()) {
+                    try {
+                        Producto p = inventario.get(rnd.nextInt(inventario.size()));
+                        int cantidad = rnd.nextInt(5) + 1;
+                        p.disminuirStock(cantidad);
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+                }
+            });
+        }
+
+        // Threads de reposición
+        for (int i = 0; i &lt; 2; i++) {
+            executor.submit(() -&gt; {
+                while (!Thread.currentThread().isInterrupted()) {
+                    try {
+                        Producto p = inventario.get(rnd.nextInt(inventario.size()));
+                        int cantidad = rnd.nextInt(10) + 5;
+                        p.aumentarStock(cantidad);
+                        Thread.sleep(200);
+                    } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+                }
+            });
+        }
+
+        // Thread de visualización
+        executor.submit(() -&gt; {
+            while (!Thread.currentThread().isInterrupted()) {
+                try {
+                    System.out.println("\n=== Inventario ===");
+                    inventario.forEach(System.out::println);
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            }
+        });
+
+        executor.awaitTermination(10, TimeUnit.SECONDS);
+        executor.shutdownNow();
+    }
+}</code></pre>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+</main>
+
+<script>
+  // ── TAB SYSTEM ──
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      b.classList.remove('active-lock', 'active-atomic', 'active-col');
+    });
+    document.getElementById('tab-' + tab).classList.add('active');
+    const btn = document.querySelector(`[data-tab="${tab}"]`);
+    if (tab === 'lock')       btn.classList.add('active-lock');
+    if (tab === 'atomic')     btn.classList.add('active-atomic');
+    if (tab === 'collection') btn.classList.add('active-col');
+  }
+
+  // ── EXERCISE ACCORDION ──
+  function toggleExercise(id) {
+    const card = document.getElementById(id);
+    card.classList.toggle('open');
+  }
+
+  // ── SOLUTION TOGGLE ──
+  function toggleSolution(id) {
+    const body = document.getElementById(id);
+    const btn  = body.previousElementSibling;
+    body.classList.toggle('visible');
+    btn.textContent = body.classList.contains('visible') ? '▲ Ocultar solución' : '▼ Ver solución';
+  }
+
+  // ── INIT ──
+  switchTab('lock');
+  hljs.highlightAll();
+</script>
+</body>
+</html>
