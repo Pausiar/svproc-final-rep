@@ -24,6 +24,7 @@
       --lock-color: #8a5a12;
       --atomic-color: #0f6a4f;
       --collection-color: #145a8a;
+      --exam-color: #7a2f5e;
       --shadow: 0 8px 28px rgba(17, 33, 48, 0.06);
     }
 
@@ -98,6 +99,12 @@
       background: #e8f0f6;
       border-color: #bfd3e3;
       color: var(--collection-color);
+    }
+
+    .tab-btn.active-exam {
+      background: #f5eaf1;
+      border-color: #dec1d2;
+      color: var(--exam-color);
     }
 
     main {
@@ -224,6 +231,12 @@
       background: #eaf2f8;
       color: var(--collection-color);
       border-color: #c5d7e5;
+    }
+
+    .ex-exam .exercise-number {
+      background: #f7edf3;
+      color: var(--exam-color);
+      border-color: #dfc7d5;
     }
 
     .exercise-title {
@@ -448,6 +461,12 @@
       border-color: #c6d8e5;
     }
 
+    .tag-exam {
+      background: #f4e9f0;
+      color: var(--exam-color);
+      border-color: #dcc4d1;
+    }
+
     @media (max-width: 700px) {
       header { padding: 1rem 1rem 0.6rem; }
       header h1 { font-size: 1.35rem; }
@@ -467,6 +486,7 @@
     <button class="tab-btn" data-tab="lock"       onclick="switchTab('lock')"      >Lock</button>
     <button class="tab-btn" data-tab="atomic"     onclick="switchTab('atomic')"    >Variables Atómicas</button>
     <button class="tab-btn" data-tab="collection" onclick="switchTab('collection')">Colecciones Concurrentes</button>
+    <button class="tab-btn" data-tab="exam"       onclick="switchTab('exam')"      >Nivel examen</button>
   </div>
 </header>
 
@@ -2082,6 +2102,317 @@ public class Main {
 
 </section>
 
+
+<!-- ═══════════════════════════════════════════════
+     TAB 4 — NIVEL EXAMEN
+═══════════════════════════════════════════════ -->
+<section id="tab-exam" class="tab-panel">
+
+  <div class="topic-intro">
+    <h2>📝 Nivel examen</h2>
+    <p>Resumen práctico para resolver ejercicios de examen con los patrones que más se repiten: reemplazo atómico de records, contadores concurrentes, colecciones seguras y simulaciones con varios threads.</p>
+    <div style="margin-top:0.75rem">
+      <span class="tag tag-exam">AtomicReference</span>
+      <span class="tag tag-exam">AtomicInteger</span>
+      <span class="tag tag-exam">ConcurrentHashMap</span>
+      <span class="tag tag-exam">computeIfAbsent</span>
+      <span class="tag tag-exam">updateAndGet</span>
+    </div>
+  </div>
+
+  <div class="section-header">
+    <h2>Teoría de examen</h2>
+    <span class="badge badge-teoria">Teoría</span>
+  </div>
+
+  <div class="card-grid">
+    <div class="card" style="margin:0">
+      <h3>1. Cómo elegir la herramienta correcta</h3>
+      <ul>
+        <li><strong>Un contador compartido:</strong> usa <code>AtomicInteger</code> o <code>AtomicLong</code>.</li>
+        <li><strong>Un objeto completo que se reemplaza:</strong> usa <code>AtomicReference&lt;T&gt;</code>.</li>
+        <li><strong>Un mapa compartido:</strong> usa <code>ConcurrentHashMap</code>.</li>
+        <li><strong>Un conjunto de elementos únicos concurrente:</strong> usa <code>ConcurrentHashMap.newKeySet()</code>.</li>
+      </ul>
+      <div class="callout callout-info">
+        <p><strong>Idea clave:</strong> si el enunciado te da un <code>record</code>, normalmente debes crear una nueva instancia al actualizarlo, no mutarlo por dentro.</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin:0">
+      <h3>2. Patrones que suelen pedir</h3>
+      <table class="method-table">
+        <thead><tr><th>Patrón</th><th>Cuándo usarlo</th></tr></thead>
+        <tbody>
+          <tr><td><code>set(new Obj(...))</code></td><td>Actualización incondicional de una configuración.</td></tr>
+          <tr><td><code>updateAndGet(curr -&gt; ...)</code></td><td>Actualizar según el estado actual sin usar locks.</td></tr>
+          <tr><td><code>computeIfAbsent(k, ...)</code></td><td>Crear automáticamente una entrada si no existe.</td></tr>
+          <tr><td><code>remove()</code> + <code>incrementAndGet()</code></td><td>Completar una tarea y aumentar el contador solo si existía.</td></tr>
+          <tr><td>Copia defensiva</td><td>Devolver listas o mapas sin exponer la estructura interna.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>3. Estructura mental para resolver el examen</h3>
+    <ul class="steps">
+      <li><div class="step-num">1</div><span>Identifica qué dato es compartido entre threads y cuál es el riesgo: sobrescritura, pérdida de incrementos o estructura inconsistente.</span></li>
+      <li><div class="step-num">2</div><span>Haz que cada operación sea atómica: crear si falta, borrar si existe, incrementar solo tras borrar, o reemplazar el objeto completo.</span></li>
+      <li><div class="step-num">3</div><span>Si el método devuelve una colección, devuelve una copia: así el exterior no modifica el estado interno concurrente.</span></li>
+      <li><div class="step-num">4</div><span>En el <code>main</code>, simula varios productores, varios consumidores y un thread de estadísticas si el enunciado lo pide.</span></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>4. Plantillas rápidas</h3>
+    <div class="code-label">Reemplazo atómico de un record</div>
+    <pre><code class="language-java">AtomicReference&lt;Config&gt; ref = new AtomicReference&lt;&gt;(new Config("Default", 3));
+
+ref.set(new Config("Nuevo", 5));
+
+boolean ok = flag.updateAndGet(curr -&gt;
+    curr.name().equals("Default") ? new Config("Seguro", 4) : curr
+) != null;</code></pre>
+    <div class="code-label">Mapa con alta concurrente automática</div>
+    <pre><code class="language-java">var restaurant = restaurants.computeIfAbsent(name,
+    key -&gt; new Restaurant(ConcurrentHashMap.newKeySet(), new AtomicInteger(0))
+);
+restaurant.pendingOrders().add(order);</code></pre>
+    <div class="callout callout-warning">
+      <p><strong>Ojo en examen:</strong> si una acción tiene dos pasos dependientes, asegúrate de que el segundo solo ocurre si el primero tuvo éxito. Ejemplo: incrementar pedidos completados solo si el pedido estaba pendiente y se pudo eliminar.</p>
+    </div>
+  </div>
+
+  <hr />
+  <div class="section-header">
+    <h2>Ejercicios de examen</h2>
+    <span class="badge badge-ejerc">Ejercicios</span>
+  </div>
+
+  <div class="exercise-card ex-exam" id="exam-ex1">
+    <div class="exercise-header" onclick="toggleExercise('exam-ex1')">
+      <div class="exercise-number">1</div>
+      <span class="exercise-title">⚙️ Gestión de configuración del sistema</span>
+      <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div class="exercise-body">
+      <p>La configuración activa del sistema se representa con un <code>record Configuration</code>. El examen pide gestionarla de forma concurrente usando <code>AtomicReference&lt;Configuration&gt;</code>.</p>
+
+      <div class="callout callout-info">
+        <p><strong>Qué te están evaluando:</strong> que entiendas que el <code>record</code> es inmutable y que la actualización correcta consiste en reemplazar la referencia completa por una nueva instancia.</p>
+      </div>
+
+      <h3>Qué debes razonar</h3>
+      <ul>
+        <li><strong>Actualización incondicional:</strong> con <code>set()</code> basta.</li>
+        <li><strong>Actualización condicionada al nombre actual:</strong> usa <code>updateAndGet()</code> y devuelve el mismo objeto si no coincide.</li>
+        <li><strong>Simulación:</strong> varios threads compiten por actualizar la configuración.</li>
+      </ul>
+
+      <h3>Solución propuesta</h3>
+      <button class="solution-toggle" onclick="toggleSolution('sol-exam1')">▼ Ver solución</button>
+      <div id="sol-exam1" class="solution-body">
+        <pre><code class="language-java">import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+
+record Configuration(String name, int securityLevel) {}
+
+public class ConfigurationManager {
+    private final AtomicReference&lt;Configuration&gt; currentConfig =
+        new AtomicReference&lt;&gt;(new Configuration("Default", 3));
+
+    public Configuration getCurrentConfiguration() {
+        return currentConfig.get();
+    }
+
+    public void updateConfiguration(String newConfigName, int newSecurityLevel) {
+        currentConfig.set(new Configuration(newConfigName, newSecurityLevel));
+    }
+
+    public boolean updateConfiguration(String expectedName,
+                                       String newConfigName,
+                                       int newSecurityLevel) {
+        AtomicBoolean updated = new AtomicBoolean(false);
+
+        currentConfig.updateAndGet(current -&gt; {
+            if (current.name().equals(expectedName)) {
+                updated.set(true);
+                return new Configuration(newConfigName, newSecurityLevel);
+            }
+            return current;
+        });
+
+        return updated.get();
+    }
+
+    public static void main(String[] args) {
+        var manager = new ConfigurationManager();
+
+        System.out.println("Configuración inicial: " + manager.getCurrentConfiguration());
+
+        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            executor.submit(() -&gt; manager.updateConfiguration("Modo-A", 4));
+            executor.submit(() -&gt; {
+                boolean ok = manager.updateConfiguration("Modo-A", "Modo-B", 5);
+                System.out.println("Actualización condicionada 1: " + ok);
+            });
+            executor.submit(() -&gt; {
+                boolean ok = manager.updateConfiguration("Default", "Modo-C", 2);
+                System.out.println("Actualización condicionada 2: " + ok);
+            });
+        }
+
+        System.out.println("Configuración final: " + manager.getCurrentConfiguration());
+    }
+}</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="exercise-card ex-exam" id="exam-ex2">
+    <div class="exercise-header" onclick="toggleExercise('exam-ex2')">
+      <div class="exercise-number">2</div>
+      <span class="exercise-title">🛵 Gestión de pedidos a domicilio</span>
+      <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div class="exercise-body">
+      <p>Cada restaurante mantiene pedidos pendientes y un contador de pedidos completados. El patrón correcto combina <code>ConcurrentHashMap</code>, un <code>Set</code> concurrente y <code>AtomicInteger</code>.</p>
+
+      <div class="callout callout-success">
+        <p><strong>Qué suele caer aquí:</strong> crear el restaurante automáticamente, completar pedidos sin race conditions y devolver una vista final del sistema sin exponer las estructuras internas.</p>
+      </div>
+
+      <h3>Puntos clave de la solución</h3>
+      <ul>
+        <li><code>addOrder(...)</code> usa <code>computeIfAbsent()</code>.</li>
+        <li><code>completeOrder(...)</code> primero elimina el pedido y solo si lo logra incrementa el contador.</li>
+        <li><code>getAllRestaurants()</code> devuelve copias de las listas de pedidos.</li>
+        <li>El <code>main</code> lanza productores, completadores y un hilo de estadísticas.</li>
+      </ul>
+
+      <h3>Solución propuesta</h3>
+      <button class="solution-toggle" onclick="toggleSolution('sol-exam2')">▼ Ver solución</button>
+      <div id="sol-exam2" class="solution-body">
+        <pre><code class="language-java">import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
+record Restaurant(
+    Set&lt;String&gt; pendingOrders,
+    AtomicInteger completedCount
+) {}
+
+public class DeliveryManager {
+    private final ConcurrentHashMap&lt;String, Restaurant&gt; restaurants =
+        new ConcurrentHashMap&lt;&gt;();
+
+    void addOrder(String restaurant, String order) {
+        Restaurant data = restaurants.computeIfAbsent(
+            restaurant,
+            key -&gt; new Restaurant(ConcurrentHashMap.newKeySet(), new AtomicInteger(0))
+        );
+        data.pendingOrders().add(order);
+    }
+
+    void completeOrder(String restaurant, String order) {
+        Restaurant data = restaurants.get(restaurant);
+        if (data == null) {
+            return;
+        }
+
+        boolean removed = data.pendingOrders().remove(order);
+        if (removed) {
+            data.completedCount().incrementAndGet();
+        }
+    }
+
+    Map&lt;String, List&lt;String&gt;&gt; getAllRestaurants() {
+        Map&lt;String, List&lt;String&gt;&gt; snapshot = new TreeMap&lt;&gt;();
+        restaurants.forEach((name, data) -&gt;
+            snapshot.put(name, new ArrayList&lt;&gt;(data.pendingOrders()))
+        );
+        return snapshot;
+    }
+
+    int getRestaurantCompletedCount(String restaurant) {
+        Restaurant data = restaurants.get(restaurant);
+        return data == null ? 0 : data.completedCount().get();
+    }
+
+    static int r() {
+        return ThreadLocalRandom.current().nextInt(10);
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        DeliveryManager manager = new DeliveryManager();
+        var executor = Executors.newVirtualThreadPerTaskExecutor();
+
+        for (int i = 0; i &lt; 4; i++) {
+            executor.submit(() -&gt; {
+                while (!Thread.currentThread().isInterrupted()) {
+                    try {
+                        manager.addOrder("Rest-" + r(), "Pedido-" + r());
+                        Thread.sleep(80);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            });
+        }
+
+        for (int i = 0; i &lt; 3; i++) {
+            executor.submit(() -&gt; {
+                while (!Thread.currentThread().isInterrupted()) {
+                    try {
+                        manager.completeOrder("Rest-" + r(), "Pedido-" + r());
+                        Thread.sleep(110);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            });
+        }
+
+        executor.submit(() -&gt; {
+            while (!Thread.currentThread().isInterrupted()) {
+                try {
+                    Thread.sleep(500);
+                    System.out.println("--- Estadísticas ---");
+                    manager.getAllRestaurants().forEach((name, orders) -&gt;
+                        System.out.println(name + " pendientes=" + orders.size() +
+                            " completados=" + manager.getRestaurantCompletedCount(name))
+                    );
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        });
+
+        executor.awaitTermination(3, TimeUnit.SECONDS);
+        executor.shutdownNow();
+
+        System.out.println("\n=== Estado final ===");
+        manager.getAllRestaurants().forEach((name, orders) -&gt;
+            System.out.println(name + " -> pendientes=" + orders +
+                ", completados=" + manager.getRestaurantCompletedCount(name))
+        );
+    }
+}</code></pre>
+      </div>
+    </div>
+  </div>
+
+</section>
+
 </main>
 
 <script>
@@ -2089,13 +2420,14 @@ public class Main {
   function switchTab(tab) {
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => {
-      b.classList.remove('active-lock', 'active-atomic', 'active-col');
+      b.classList.remove('active-lock', 'active-atomic', 'active-col', 'active-exam');
     });
     document.getElementById('tab-' + tab).classList.add('active');
     const btn = document.querySelector(`[data-tab="${tab}"]`);
     if (tab === 'lock')       btn.classList.add('active-lock');
     if (tab === 'atomic')     btn.classList.add('active-atomic');
     if (tab === 'collection') btn.classList.add('active-col');
+    if (tab === 'exam')       btn.classList.add('active-exam');
   }
 
   // ── EXERCISE ACCORDION ──
